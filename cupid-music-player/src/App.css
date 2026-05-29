@@ -1,919 +1,217 @@
-.player {
-  position: relative;
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+:root {
+  --bg-color: #121212;
+  --card-bg: #1e1e1e;
+  --text-main: #ffffff;
+  --text-sub: #a0a0a0;
+  --accent: #6C5CE7;
+  --accent-hover: #5b4bc4;
+}
+
+/* Bright Theme */
+.pink-theme {
+  --bg-color: #fff0f3;
+  --card-bg: #ffffff;
+  --text-main: #2d3436;
+  --text-sub: #636e72;
+  --accent: #ff7675;
+  --accent-hover: #d63031;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Nunito', sans-serif;
+}
+
+body {
+  /* Critical: Keeps the Electron window transparent around the edges */
+  background-color: transparent; 
+  overflow: hidden;
+}
+
+.app-container {
   width: 100vw;
   height: 100vh;
-  overflow: hidden;
-  border-radius: calc(5 / 306 * 100vw); /* match frame's pixel-art rounded corners */
-  clip-path: inset(0 0 0 calc(3 / 306 * 100vw));
-  --color-title: #78364F;
-  --color-primary: #5a3a4a;
-  --color-secondary: #8a6a7a;
-  --color-panel-text: #F6CFC8;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 2px solid var(--accent);
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-.player.theme-blue {
-  --color-title: #7E8691;       /* Soft slate */
-  --color-primary: #15171A;     /* Deep charcoal background */
-  --color-secondary: #30363D;   /* Dark grey borders/accents */
-  --color-panel-text: #83878b;  /* Bright readable text */
-}
-
-/* 🌙 UPDATED: Smarter charcoal filter */
-.player.theme-blue img:not(.album-art) {
-  /* Increased brightness from 35% to 65% so details show up! */
-  /* Added slight sepia/hue-rotate to give it a "charcoal/grey" vibe instead of just dark blue */
-  filter: grayscale(80%) brightness(35%) contrast(110%) sepia(10%) hue-rotate(190deg);
-}
-
-/* Make time display readable in Charcoal/Blue theme */
-.player.theme-blue .time-display {
-  color: var(--color-panel-text) !important;
-  text-shadow: 0 0 4px rgba(0,0,0,0.5);
-}
-
-.layer {
-  position: absolute;
-  /* All values based on vw so everything scales from one reference.
-     Canvas is 526x526, visible frame is 306x497.
-     Image size: 526/306 * 100vw = 171.9vw
-     Left offset: 110/306 * 100vw = 35.95vw
-     Top offset: 23/306 * 100vw = 7.52vw */
-  top: calc(-23 / 306 * 100vw); /* crop at bow top */
-  left: -35.95vw;
-  width: 171.9vw;
-  height: 171.9vw;
-  image-rendering: pixelated;
-  pointer-events: none;
-  user-select: none;
-}
-
-.layer.clickable {
-  pointer-events: auto;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-}
-
-.window-title {
-  position: absolute;
-  left: calc((134 - 110) / 306 * 100vw);
-  top: calc((50 - 23) / 306 * 100vw);
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(20 / 306 * 100vw);
-  color: var(--color-title);
-  z-index: 50;
-  pointer-events: none;
-  user-select: none;
-}
-
-/* Invisible drag region for moving the frameless window */
+/* This allows you to drag the borderless window around your screen */
 .drag-region {
-  position: absolute;
-  top: calc(8 / 306 * 100vw); /* start below the bow, at the frame border */
-  left: 0;
-  width: 100%;
-  height: calc(50 / 306 * 100vw); /* top area of frame for dragging */
-  z-index: 100;
   -webkit-app-region: drag;
-
 }
 
-/* Custom resize handles at frame corners (below bow) */
-.resize-handle {
-  position: absolute;
-  width: calc(12 / 306 * 100vw);
-  height: calc(12 / 306 * 100vw);
-  z-index: 200;
-
-  -webkit-app-region: no-drag;
-  pointer-events: auto;
-}
-
-/* Window control click targets — positioned over the button icons */
-/* Positions relative to 306-wide visible frame: (canvasX - 110) / 306 */
-/* Y relative to 497-tall visible frame: (canvasY - 23) / 497 */
-.btn {
-  position: absolute;
-  width: calc(20 / 306 * 100vw);
-  height: calc(21 / 306 * 100vw);
-  z-index: 150;
-  cursor: pointer;
-  border-radius: calc(4 / 306 * 100vw);
+/* This stops the buttons from dragging the window so you can click them */
+.no-drag {
   -webkit-app-region: no-drag;
 }
 
-.btn-minimize {
-
-  left: calc((331 - 110) / 306 * 100vw);
-  top: calc((48 - 23) / 306 * 100vw);
-}
-
-.btn-window {
-
-  left: calc((355 - 110) / 306 * 100vw);
-  top: calc((48 - 23) / 306 * 100vw);
-  width: calc(19 / 306 * 100vw);
-}
-
-.btn-exit {
-
-  left: calc((378 - 110) / 306 * 100vw);
-  top: calc((48 - 23) / 306 * 100vw);
-}
-
-.settings-layer {
-  transform: scale(0.85);
-  transform-origin: calc(310 / 512 * 100%) calc(57 / 512 * 100%);
-}
-
-.btn-settings {
-  left: calc((305 - 110) / 306 * 100vw);
-  top: calc((48 - 23) / 306 * 100vw);
-}
-
-.settings-panel {
-  position: absolute;
-  top: calc((70 - 23) / 306 * 100vw);
-  right: calc(5 / 306 * 100vw);
-  z-index: 300;
-  -webkit-app-region: no-drag;
-  pointer-events: auto;
-}
-
-.settings-panel-inner {
-  background: var(--color-primary);
-  border: calc(2 / 306 * 100vw) solid var(--color-secondary);
-  border-radius: calc(4 / 306 * 100vw);
-  padding: calc(6 / 306 * 100vw);
-  width: calc(140 / 306 * 100vw);
-  max-height: calc(260 / 306 * 100vw);
-  overflow-y: auto;
-  scrollbar-width: none;
-  display: flex;
-  flex-direction: column;
-  gap: calc(4 / 306 * 100vw);
-}
-
-.settings-label {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(11 / 306 * 100vw);
-  color: var(--color-panel-text);
-  white-space: nowrap;
-}
-
-.settings-theme-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(4 / 306 * 100vw);
-}
-
-.settings-dropdown {
-  position: relative;
-}
-
-.settings-dropdown-trigger {
-  width: 100%;
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(10 / 306 * 100vw);
-  background: var(--color-primary);
-  border: calc(1 / 306 * 100vw) solid var(--color-panel-text);
-  border-radius: calc(2 / 306 * 100vw);
-  color: var(--color-panel-text);
-  padding: calc(3 / 306 * 100vw) calc(6 / 306 * 100vw);
-  cursor: pointer;
-  outline: none;
+.window-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  text-align: left;
+  padding: 15px 20px;
+  background-color: rgba(0,0,0,0.1);
+  border-bottom: 1px solid rgba(128,128,128,0.1);
 }
 
-.settings-dropdown-trigger:hover {
-  background: var(--color-panel-text);
-  color: var(--color-primary);
-}
-
-.settings-dropdown-chevron {
-  font-size: calc(10 / 306 * 100vw);
-  line-height: 1;
-  margin-left: calc(4 / 306 * 100vw);
-  transition: transform 0.1s ease;
-}
-
-.settings-dropdown.open .settings-dropdown-chevron {
-  transform: rotate(180deg);
-}
-
-.settings-dropdown-menu {
-  /* Position is set inline via portal — top/left/width come from JS */
-  background: var(--color-primary);
-  border: calc(1 / 306 * 100vw) solid var(--color-panel-text);
-  border-radius: calc(2 / 306 * 100vw);
-  display: flex;
-  flex-direction: column;
-  z-index: 1000;
-  overflow: hidden;
-  box-shadow: 0 calc(2 / 306 * 100vw) calc(6 / 306 * 100vw) rgba(0, 0, 0, 0.4);
-}
-
-.settings-dropdown-item {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(10 / 306 * 100vw);
-  background: none;
-  border: none;
-  color: var(--color-panel-text);
-  padding: calc(3 / 306 * 100vw) calc(6 / 306 * 100vw);
-  cursor: pointer;
-  text-align: left;
-}
-
-.settings-dropdown-item:hover,
-.settings-dropdown-item.active {
-  background: var(--color-panel-text);
-  color: var(--color-primary);
-}
-
-.settings-theme-btn {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(10 / 306 * 100vw);
-  background: none;
-  border: calc(1 / 306 * 100vw) solid var(--color-panel-text);
-  border-radius: calc(2 / 306 * 100vw);
-  color: var(--color-panel-text);
-  padding: calc(3 / 306 * 100vw) calc(6 / 306 * 100vw);
-  cursor: pointer;
-}
-
-.settings-theme-btn.active {
-  background: var(--color-panel-text);
-  color: var(--color-primary);
-}
-
-/* --- DARK INPUT FIELDS --- */
-.settings-input {
-  background: rgba(10, 10, 10, 0.95) !important; /* Force near-black background */
-  color: #ffffff !important;                   /* Force white text */
-  border: 1px solid #444 !important;           /* Clear border */
-  border-radius: 4px;
-  padding: 8px;
-  width: 100%;
-  font-family: 'Rainyhearts', monospace;
+.app-title {
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   font-size: 14px;
+  color: var(--accent);
 }
 
-/* Make placeholder text visible in the dark theme */
-.settings-input::placeholder {
-  color: #888;
+.header-controls {
+  display: flex;
+  gap: 10px;
 }
 
-.settings-playlist-list {
-  max-height: calc(70 / 306 * 100vw);
-  overflow-y: auto;
+.icon-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.icon-btn:hover {
+  transform: scale(1.2);
+}
+.btn-settings { background-color: #ffeaa7; }
+.btn-minimize { background-color: #00cec9; }
+.btn-exit { background-color: #ff7675; }
+
+.app-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: calc(2 / 306 * 100vw);
-  scrollbar-width: none;
+  padding: 20px;
+  justify-content: space-between;
 }
 
-.settings-playlist-list::-webkit-scrollbar {
-  display: none;
-}
-
-.settings-playlist-item {
-  width: 100%;
-  height: calc(22 / 306 * 100vw);
-  flex-shrink: 0;
-  box-sizing: border-box;
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(12 / 306 * 100vw);
-  line-height: 1;
-  background: rgba(255, 255, 255, 0.05);
-  border: none;
-  border-radius: calc(2 / 306 * 100vw);
-  color: var(--color-panel-text);
-  padding: 0 calc(6 / 306 * 100vw);
-  cursor: pointer;
-  text-align: left;
+.display-card {
+  background-color: var(--card-bg);
+  flex: 1;
+  border-radius: 16px;
   display: flex;
   align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.settings-playlist-item:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.settings-playlist-item.disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.settings-error {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(9 / 306 * 100vw);
-  color: #ff6b6b;
-}
-
-/* Volume hover zone — covers icon + bar area as one block */
-.volume-hover-zone {
-  position: absolute;
-  left: calc((363 - 110) / 306 * 100vw);
-  bottom: calc((512 - 412 - 23) / 306 * 100vw);
-  width: calc(20 / 306 * 100vw);
-  height: calc(18 / 306 * 100vw);
-  z-index: 155;
-  -webkit-app-region: no-drag;
-}
-
-.btn-volume-icon {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: calc(20 / 306 * 100vw);
-  height: calc(20 / 306 * 100vw);
-  cursor: pointer;
-}
-
-.volume-hover-zone.expanded {
-  height: calc((420 - 338 + 25) / 306 * 100vw);
-}
-
-.volume-bar-area {
-  position: absolute;
-  left: calc((357 - 355) / 306 * 100vw);
-  top: calc(5 / 306 * 100vw);
-  width: calc(10 / 306 * 100vw);
-  height: calc((420 - 338) / 306 * 100vw);
-  cursor: pointer;
-}
-
-.layer.volume-bar-layer {
-  z-index: 150;
-}
-
-/* Shuffle/repeat click target */
-.btn-playmode {
-  position: absolute;
-  left: calc((139 - 110) / 306 * 100vw);
-  top: calc((425 - 23) / 306 * 100vw);
-  width: calc(25 / 306 * 100vw);
-  height: calc(20 / 306 * 100vw);
-  z-index: 150;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-}
-
-/* Debug overlay for positioning */
-.debug-overlay {
-  background: rgba(255, 0, 0, 0.25);
-  border: 1px solid rgba(255, 0, 0, 0.6);
-  pointer-events: none;
-  z-index: 999;
-}
-
-
-/* Debug overlay for volume bar seek area (absolute positioned to match) */
-.volume-bar-area-debug {
-  position: absolute;
-  left: calc((357 - 110) / 306 * 100vw);
-  top: calc((345 - 23) / 306 * 100vw);
-  width: calc(10 / 306 * 100vw);
-  height: calc((420 - 338) / 306 * 100vw);
-  background: rgba(0, 0, 255, 0.25);
-  border: 1px solid rgba(0, 0, 255, 0.6);
-  z-index: 999;
-}
-
-/* Progress bar seek target */
-.progress-seek {
-  position: absolute;
-  left: calc((140 - 110) / 306 * 100vw);
-  top: calc((469 - 23) / 306 * 100vw);
-  width: calc(241 / 306 * 100vw);
-  height: calc(6 / 306 * 100vw);
-  z-index: 150;
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-}
-
-
-/* Playback control click targets */
-.btn-prev {
-  left: calc((172 - 110) / 306 * 100vw);
-  top: calc((418 - 23) / 306 * 100vw);
-  width: calc(44 / 306 * 100vw);
-  height: calc(31 / 306 * 100vw);
-}
-
-.btn-play {
-  left: calc((240 - 110) / 306 * 100vw);
-  top: calc((418 - 23) / 306 * 100vw);
-  width: calc(44 / 306 * 100vw);
-  height: calc(31 / 306 * 100vw);
-}
-
-.btn-next {
-  left: calc((310 - 110) / 306 * 100vw);
-  top: calc((418 - 23) / 306 * 100vw);
-  width: calc(44 / 306 * 100vw);
-  height: calc(31 / 306 * 100vw);
-}
-
-/* Now playing section — album art + text */
-.now-playing {
-  position: absolute;
-  left: calc((195 - 110) / 306 * 100vw);
-  top: calc((355 - 23) / 306 * 100vw);
-  width: calc(170 / 306 * 100vw); /* <--- ADD THIS LINE */
-  display: flex;
-  flex-direction: column;
   justify-content: center;
-  z-index: 50;
-  pointer-events: none;
+  text-align: center;
+  padding: 20px;
+  box-shadow: inset 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* --- SONG EDIT MENU TRIGGER --- */
-.btn-song-menu {
-  position: absolute;
-  top: 0;
-  right: calc(-20 / 306 * 100vw);
-  background: var(--color-primary); /* Automatically matches theme background */
-  border: 1px solid var(--color-secondary); /* Automatically matches theme border */
-  color: var(--color-panel-text); 
-  border-radius: 4px;
-  font-size: calc(14 / 306 * 100vw);
-  font-family: 'Rainyhearts', monospace;
-  cursor: pointer;
-  pointer-events: auto;
-  padding: calc(2 / 306 * 100vw) calc(6 / 306 * 100vw);
-  line-height: 1;
-  z-index: 100;
+.empty-prompt p {
+  font-size: 24px;
+  font-weight: 900;
+}
+.empty-prompt span {
+  font-size: 14px;
+  color: var(--text-sub);
 }
 
-.btn-song-menu:hover {
-  background: var(--color-panel-text);
-  color: var(--color-primary); 
+.char-info {
+  margin-bottom: 25px;
 }
 
-/* --- EDIT BUTTONS --- */
-.btn-edit-action {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(10 / 306 * 100vw);
-  background: rgba(10, 10, 10, 0.9);
-  border-radius: calc(2 / 306 * 100vw);
-  padding: calc(3 / 306 * 100vw) calc(6 / 306 * 100vw);
-  cursor: pointer;
-  pointer-events: auto;
+.character-name {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--accent);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  line-height: 1.1;
 }
 
-.btn-edit-cancel {
-  color: #ff6b6b;
-  border: 1px solid #ff6b6b;
-}
-
-.btn-edit-cancel:hover {
-  background: #ff6b6b;
-  color: #000000; /* Turns text black when hovered so you can read it */
-}
-
-.btn-edit-save {
-  color: #51cf66;
-  border: 1px solid #51cf66;
-}
-
-.btn-edit-save:hover {
-  background: #51cf66;
-  color: #000000;
-}
-
-.record-player {
-  position: absolute;
-  width: calc(200 / 306 * 100vw);
-  left: 50%;
-  top: calc(120 / 306 * 100vw);
-  transform: translateX(-50%);
-  image-rendering: pixelated;
-  pointer-events: none;
-  user-select: none;
-  z-index: 12; /* Increased slightly to sit above background layers */
-  filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.3)); /* Adds depth */
-}
-
-.frame-overlay {
-  z-index: 15;
-}
-
-.layer-ui {
-  z-index: 20;
-}
-
-.record-slide-out {
-  animation: slide-out 0.6s ease-in forwards;
-}
-
-.record-slide-in {
-  animation: slide-in 0.6s ease-out forwards;
-}
-
-@keyframes slide-out {
-  0% { transform: translate(-50%, 0); }
-  100% { transform: translate(calc(-50% - 60vw), 20vw); }
-}
-
-@keyframes slide-in {
-  0% { transform: translate(calc(-50% - 60vw), 20vw); }
-  100% { transform: translate(-50%, 0); }
-}
-
-.album-frame-layer {
-  left: calc(-35.95vw - 1 / 306 * 100vw);
-  top: calc(-23 / 306 * 100vw);
-  z-index: 45;
-}
-
-.album-mask {
-  position: absolute;
-  left: calc((146 - 110) / 306 * 100vw);
-  top: calc((356 - 23) / 306 * 100vw);
-  width: calc(42 / 306 * 100vw);
-  height: calc(42 / 306 * 100vw);
-  clip-path: url(#album-mask);
-  overflow: hidden;
-  z-index: 40;
-  pointer-events: none;
-}
-
-.album-art {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  image-rendering: pixelated;
-}
-
-.track-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.now-playing-label {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(12 / 306 * 100vw);
-  color: var(--color-secondary);
-}
-
-.track-title {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(24 / 306 * 100vw);
-  color: var(--color-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  max-width: calc(170 / 306 * 100vw);
-}
-
-.marquee-measure {
-  position: absolute;
-  visibility: hidden;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-.marquee-scroll {
-  display: inline-block;
-  animation: marquee 8s linear infinite;
-}
-
-.marquee-gap {
-  margin-left: calc(28 / 306 * 100vw);
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.track-artist {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(14 / 306 * 100vw);
-  color: var(--color-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: calc(200 / 306 * 100vw);
-}
-
-/* Time display — elapsed left, remaining right */
-.time-display {
-  position: absolute;
-  left: calc((136 - 110) / 306 * 100vw);
-  top: calc((479 - 23) / 306 * 100vw);
-  width: calc((382 - 136) / 306 * 100vw);
-  display: flex;
-  justify-content: space-between;
-  z-index: 50;
-  pointer-events: none;
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(12 / 306 * 100vw);
-  color: var(--color-primary);
-}
-
-.resize-handle.top-left {
-  top: calc(7 / 306 * 100vw); /* at frame border, not bow */
-  left: 0;
-  cursor: nwse-resize;
-  border-top-left-radius: calc(5 / 306 * 100vw);
-}
-
-.resize-handle.top-right {
-  top: calc(7 / 306 * 100vw);
-  right: 0;
-  cursor: nesw-resize;
-  border-top-right-radius: calc(5 / 306 * 100vw);
-}
-
-.resize-handle.bottom-left {
-  bottom: 0;
-  left: 0;
-  cursor: nesw-resize;
-  border-bottom-left-radius: calc(5 / 306 * 100vw);
-}
-
-.resize-handle.bottom-right {
-  bottom: 0;
-  right: 0;
-  cursor: nwse-resize;
-  border-bottom-right-radius: calc(5 / 306 * 100vw);
-}
-
-/* ── Spotify panel ───────────────────────────────────────── */
-
-/* Small toggle button positioned near the window controls */
-.btn-spotify-toggle {
-  left: calc((307 - 110) / 306 * 100vw);
-  top: calc((48 - 23) / 306 * 100vw);
-  width: calc(20 / 306 * 100vw);
-  height: calc(20 / 306 * 100vw);
-  opacity: 0.6;
-  transition: opacity 0.15s;
-  background: url('../assets/spotify_icon.svg') center / calc(14 / 306 * 100vw) no-repeat;
-}
-
-.btn-spotify-toggle:hover {
-  opacity: 1;
-}
-
-
-/* Dropdown panel for Spotify connection */
-.spotify-panel {
-  position: absolute;
-  top: calc((75 - 23) / 306 * 100vw);
-  right: calc((526 - 400 - 110) / 306 * 100vw);
-  z-index: 300;
-  -webkit-app-region: no-drag;
-  pointer-events: auto;
-}
-
-.spotify-panel-inner {
-  background: #2a1a2a;
-  border: calc(2 / 306 * 100vw) solid #5a3a4a;
-  border-radius: calc(4 / 306 * 100vw);
-  padding: calc(8 / 306 * 100vw);
-  min-width: calc(120 / 306 * 100vw);
-  display: flex;
-  flex-direction: column;
-  gap: calc(5 / 306 * 100vw);
-  image-rendering: pixelated;
-}
-
-.spotify-label {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(11 / 306 * 100vw);
-  color: #8a6a7a;
-  white-space: nowrap;
-}
-
-.spotify-input {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(10 / 306 * 100vw);
-  background: #1a0e1a;
-  border: calc(1 / 306 * 100vw) solid #5a3a4a;
-  border-radius: calc(2 / 306 * 100vw);
-  color: #d4a4b4;
-  padding: calc(3 / 306 * 100vw) calc(4 / 306 * 100vw);
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.spotify-input::placeholder {
-  color: #5a3a4a;
-}
-
-.spotify-btn-row {
-  display: flex;
-  gap: calc(4 / 306 * 100vw);
-}
-
-.spotify-btn {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(10 / 306 * 100vw);
-  background: #5a3a4a;
-  border: none;
-  border-radius: calc(2 / 306 * 100vw);
-  color: #f4d4e4;
-  padding: calc(2 / 306 * 100vw) calc(6 / 306 * 100vw);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.spotify-btn:hover {
-  background: #7a4a6a;
-}
-
-.spotify-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.spotify-btn-disconnect {
-  background: #4a2a2a;
-}
-
-.spotify-btn-disconnect:hover {
-  background: #6a3a3a;
-}
-
-.spotify-error {
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(9 / 306 * 100vw);
-  color: #c44;
-  word-break: break-word;
-}
-
-/* --- QUEUE SYSTEM --- */
-.btn-queue {
-  position: absolute;
-  left: calc((129 - 110) / 306 * 100vw);
-  top: calc((85 - 23) / 306 * 100vw);
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(12 / 306 * 100vw);
-  background: var(--color-primary);
-  border: calc(1 / 306 * 100vw) solid var(--color-secondary);
-  color: var(--color-panel-text);
-  border-radius: calc(3 / 306 * 100vw);
-  padding: calc(2 / 306 * 100vw) calc(6 / 306 * 100vw);
-  cursor: pointer;
-  z-index: 310; /* <--- This fixes the click issue! */
-  -webkit-app-region: no-drag;
-  outline: none;
-}
-
-.btn-queue:hover, .btn-queue.active {
-  background: var(--color-panel-text);
-  color: var(--color-primary);
-  border-color: var(--color-panel-text);
-}
-
-.queue-panel {
-  position: absolute;
-  top: calc((95 - 23) / 306 * 100vw);
-  left: calc((120 - 110) / 306 * 100vw);
-  z-index: 300;
-  -webkit-app-region: no-drag;
-  pointer-events: auto;
-}
-
-.queue-panel-inner {
-  background: var(--color-primary);
-  border: calc(2 / 306 * 100vw) solid var(--color-secondary);
-  border-radius: calc(4 / 306 * 100vw);
-  padding: calc(6 / 306 * 100vw);
-  width: calc(160 / 306 * 100vw);
-  max-height: calc(240 / 306 * 100vw);
-  display: flex;
-  flex-direction: column;
-  gap: calc(4 / 306 * 100vw);
-}
-
-.queue-list {
-  max-height: calc(200 / 306 * 100vw);
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.queue-list::-webkit-scrollbar {
-  display: none;
-}
-
-.queue-list .settings-playlist-item {
-  font-size: calc(10 / 306 * 100vw);
-  height: auto;
-  min-height: calc(18 / 306 * 100vw);
-  white-space: normal;
-  line-height: 1.2;
-  padding: calc(3 / 306 * 100vw) calc(4 / 306 * 100vw);
-  margin-bottom: calc(2 / 306 * 100vw);
-}
-
-.queue-list .settings-playlist-item.active {
-  background: var(--color-panel-text);
-  color: var(--color-primary);
-}
-
-/* Ensure text is bright white in Charcoal/Blue theme */
-.theme-blue .track-title,
-.theme-blue .track-artist,
-.theme-blue .now-playing-label {
-  color: var(--color-panel-text) !important;
-  text-shadow: 0 0 4px rgba(0,0,0,0.5); /* Adds a shadow to make it readable over images */
-}
-
-/* --- MINI PLAYER MODE --- */
-.player.mini-mode .layer:not(.album-frame-layer),
-.player.mini-mode .window-title,
-.player.mini-mode .track-info,
-.player.mini-mode .time-display,
-.player.mini-mode .btn,
-.player.mini-mode .queue-panel,
-.player.mini-mode .settings-panel,
-.player.mini-mode .progress-seek,
-.player.mini-mode .volume-hover-zone,
-.player.mini-mode .btn-queue 
-{
-  /* Everything else hides */
-  display: none !important; 
-}
-
-/* Force the mini toggle to stay visible and clickable */
-.player.mini-mode .btn-mini-toggle {
-  display: block !important;
-  opacity: 1 !important;
-  z-index: 9999 !important;
-  pointer-events: auto !important;
-}
-
-/* Re-center the record player in the tiny square */
-.player.mini-mode .record-player {
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) scale(1.2) !important;
-}
-
-
-
-/* --- MINI TOGGLE BUTTON --- */
-.btn-mini-toggle {
-  position: absolute;
-  top: calc(332 / 306 * 100vw);
-  right: calc(52 / 306 * 100vw); /* Places it just left of the settings gear */
-  background: var(--color-primary);
-  border: 1px solid var(--color-secondary);
-  color: var(--color-panel-text);
-  font-family: 'Rainyhearts', monospace;
-  font-size: calc(10 / 306 * 100vw);
-  padding: 2px 4px;
-  border-radius: 4px;
-  cursor: pointer;
-  z-index: 310;
-  pointer-events: auto;
-}
-
-.btn-mini-toggle:hover {
-  background: var(--color-panel-text);
-  color: var(--color-primary);
-}
-
-/* In mini-mode, hide it until hovered to keep the UI clean */
-.player.mini-mode .btn-mini-toggle {
-  top: 5px;
-  right: 5px;
+.game-tag {
   font-size: 12px;
-  opacity: 0; 
-  transition: opacity 0.2s;
+  background-color: var(--accent);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 
-.player.mini-mode:hover .btn-mini-toggle {
-  opacity: 1; /* Shows up when you mouse over the window */
+.modifier-box {
+  background-color: rgba(128,128,128,0.1);
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px dashed var(--text-sub);
 }
 
-/* Keep the mini button visible and clickable in mini mode */
-.player.mini-mode .btn-mini-toggle {
-  display: block !important;
-  opacity: 0; 
-  transition: opacity 0.2s;
-  
-  /* FORCE IT TO BE CLICKABLE */
-  z-index: 99999 !important; 
-  pointer-events: auto !important; 
-  -webkit-app-region: no-drag !important; /* <--- THIS IS THE MAGIC FIX */
+.modifier-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: var(--text-sub);
+  letter-spacing: 1.5px;
+  margin-bottom: 5px;
 }
 
-/* Show the button when hovering over the mini player */
-.player.mini-mode:hover .btn-mini-toggle {
-  opacity: 1 !important;
+.modifier-text {
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 700;
 }
 
-/* Ensure the background drag region doesn't block the button */
-.drag-region {
-  pointer-events: none; 
+.action-footer {
+  margin-top: 20px;
+}
+
+.roll-button {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 12px;
+  background-color: var(--accent);
+  color: white;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+  /* Ensures the button is clickable and doesn't drag the window */
+  -webkit-app-region: no-drag; 
+}
+
+.roll-button:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-2px);
+}
+
+.roll-button:active {
+  transform: translateY(2px);
+}
+
+.roll-button.disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: pulse 0.4s infinite alternate;
+}
+
+.result-layout {
+  transition: all 0.1s ease-in-out;
+}
+
+.result-layout.rolling {
+  opacity: 0.3;
+  filter: blur(3px) scale(0.95);
+}
+
+@keyframes pulse {
+  from { transform: scale(1); }
+  to { transform: scale(0.98); }
 }

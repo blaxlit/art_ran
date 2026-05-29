@@ -8,13 +8,14 @@ export default function App() {
   const [rolledModifier, setRolledModifier] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
 
-  // Fetch character roster and drawing pools from Electron backend on launch
   useEffect(() => {
-    if (window.cupid?.getPoolData) {
-      window.cupid.getPoolData().then((data) => {
-        if (data) setPool(data);
-      });
-    }
+    // Replace this URL with your actual Raw Gist URL
+    const gistUrl = 'https://gist.githubusercontent.com/your-username/your-gist-id/raw/pool.json';
+    
+    fetch(gistUrl)
+      .then(response => response.json())
+      .then(data => setPool(data))
+      .catch(error => console.error("Error fetching data:", error));
   }, []);
 
   const handleRoll = () => {

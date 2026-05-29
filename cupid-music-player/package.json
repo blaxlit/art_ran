@@ -42,16 +42,15 @@
     },
     "mac": {
       "target": "dir",
-      "category": "public.app-category.music",
-      "icon": "assets/pink/icon.png"
+      "icon": "assets/app-icons/my-icon.png"
     },
     "win": {
       "target": "nsis",
-      "icon": "assets/pink/icon.png"
+      "icon": "assets/app-icons/my-icon.png"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "assets/pink/icon.png"
+      "icon": "assets/app-icons/my-icon.png"
     }
   }
 }

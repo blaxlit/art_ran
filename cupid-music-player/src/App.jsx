@@ -10,7 +10,7 @@ export default function App() {
 
   useEffect(() => {
     // Replace this URL with your actual Raw Gist URL
-    const gistUrl = 'https://gist.githubusercontent.com/your-username/your-gist-id/raw/pool.json';
+    const gistUrl = 'https://gist.githubusercontent.com/blaxlit/0fedb2c923ff3e418763872a3f56b4fc/raw/84a77a25b27e4064ad9e5ff5c3585a159ffc04a0/pool.json';
     
     fetch(gistUrl)
       .then(response => response.json())

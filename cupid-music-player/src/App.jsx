@@ -1,153 +1,250 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import { YoutubeAPI } from './youtube/index';
+import useAudioPlayer from './useAudioPlayer';
+import useSpotifyPlayer from './useSpotifyPlayer';
 
-export default function App() {
-  const [theme, setTheme] = useState('pink');
-  const [pool, setPool] = useState(null);
-  const [rolledCharacter, setRolledCharacter] = useState(null);
-  const [rolledModifier, setRolledModifier] = useState(null);
-  const [isRolling, setIsRolling] = useState(false);
+function App() {
+  // Theme state
+  const [theme, setTheme] = useState('blue'); // 'blue' or 'pink'
+  
+  // Data state
+  const [playlist, setPlaylist] = useState([]);
+  const [students, setStudents] = useState({});
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState(null);
 
-  // CLOUD FETCHING + SMART CACHING
+  // Player state
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  // APIs
+  const youtubeAPI = useRef(null);
+  
+  // Custom hooks for players
+  const {
+    initAudio,
+    playAudio,
+    pauseAudio,
+    setAudioVolume,
+    seekAudio,
+    cleanupAudio
+  } = useAudioPlayer();
+
+  const {
+    initSpotify,
+    playSpotify,
+    pauseSpotify,
+    setSpotifyVolume,
+    seekSpotify,
+    cleanupSpotify
+  } = useSpotifyPlayer();
+
+  // Load Data Automatically from SchaleDB
   useEffect(() => {
-    async function loadData() {
+    async function fetchSchaleData() {
       try {
-        // 1. Fetch your custom poses/themes from your GitHub Gist
-        // ⚠️ REPLACE THIS LINK WITH YOUR RAW GIST URL ⚠️
-        const GIST_URL = 'PASTE_YOUR_RAW_GIST_URL_HERE';
+        setDataLoading(true);
+        // Fetch students data from the live mirror
+        const response = await fetch('https://schaledb.com/data/en/students.min.json');
         
-        let onlineModifiers = {};
-        if (GIST_URL !== 'PASTE_YOUR_RAW_GIST_URL_HERE') {
-          const gistResponse = await fetch(GIST_URL);
-          const gistData = await gistResponse.json();
-          // We only want the modifiers object from your Gist
-          onlineModifiers = gistData.modifiers || {}; 
+        if (!response.ok) {
+          throw new Error(`Failed to load database: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Transform data if needed for your app structure
+        // Assuming your app expects an object mapping IDs or names to student data
+        const studentMap = {};
+        if (Array.isArray(data)) {
+          data.forEach(student => {
+            studentMap[student.Id] = student;
+          });
+        }
+        
+        setStudents(studentMap);
+        
+        // --- FETCH PLAYLIST DATA (Modify if your playlist comes from SchaleDB too) ---
+        // If your playlist is still local or from another source, load it here.
+        // For this example, I'm fetching a local playlist.json. Change if needed!
+        try {
+            const playlistResponse = await fetch('/audio/playlist.json');
+            if (playlistResponse.ok) {
+                const playlistData = await playlistResponse.json();
+                setPlaylist(playlistData.tracks || playlistData);
+            } else {
+                 console.warn("Could not load local playlist.json");
+                 // fallback empty playlist
+                 setPlaylist([]);
+            }
+        } catch (e) {
+             console.warn("Failed to fetch local playlist", e);
+             setPlaylist([]);
         }
 
-        // 2. Load Blue Archive Characters (with Caching for speed!)
-        const cachedSchale = localStorage.getItem('schale_characters');
-        let characters = [];
 
-        if (cachedSchale) {
-          // If we already downloaded them before, load instantly from memory!
-          characters = JSON.parse(cachedSchale);
-        } else {
-          // If it's the first time, fetch the massive file from SchaleDB
-          const schaleResponse = await fetch('https://schale.gg/data/en/students.json');
-          const schaleData = await schaleResponse.json();
-          
-          characters = schaleData.map(student => ({
-            name: student.Name,
-            game: "Blue Archive",
-            imageUrl: `https://schale.gg/images/student/collection/${student.Id}.webp`
-          }));
-          
-          // Save the trimmed-down list to the app's local storage so it's instant next time
-          localStorage.setItem('schale_characters', JSON.stringify(characters));
-        }
-
-        // 3. Combine both data sources and start the app
-        setPool({ characters, modifiers: onlineModifiers });
-
-      } catch (error) {
-        console.error("Error loading data:", error);
+        setDataLoading(false);
+      } catch (err) {
+        console.error("Error loading application data:", err);
+        setDataError(err.message);
+        setDataLoading(false);
       }
     }
 
-    loadData();
+    fetchSchaleData();
+
+    // Initialize YouTube API
+    youtubeAPI.current = new YoutubeAPI();
+    youtubeAPI.current.init();
+
+    return () => {
+      // Cleanup
+      cleanupAudio();
+      cleanupSpotify();
+    };
   }, []);
 
-  const handleRoll = () => {
-    if (!pool || pool.characters.length === 0) return;
-    setIsRolling(true);
+  // Handle Play/Pause
+  const togglePlay = () => {
+    if (playlist.length === 0) return;
     
-    let cycles = 0;
-    const interval = setInterval(() => {
-      // Pick random character
-      const tempChar = pool.characters[Math.floor(Math.random() * pool.characters.length)];
-      setRolledCharacter(tempChar);
-      
-      // Pick random modifier
-      if (pool.modifiers && Object.keys(pool.modifiers).length > 0) {
-        const modTypes = Object.keys(pool.modifiers);
-        const randomType = modTypes[Math.floor(Math.random() * modTypes.length)];
-        const modArray = pool.modifiers[randomType];
-        
-        if (modArray && modArray.length > 0) {
-          const tempMod = modArray[Math.floor(Math.random() * modArray.length)];
-          setRolledModifier({
-            type: randomType,
-            text: tempMod
-          });
-        }
-      }
+    const track = playlist[currentTrackIndex];
+    if (!track) return;
 
-      cycles++;
-      if (cycles > 8) {
-        clearInterval(interval);
-        setIsRolling(false);
+    if (isPlaying) {
+      if (track.source === 'local') pauseAudio();
+      else if (track.source === 'spotify') pauseSpotify();
+      setIsPlaying(false);
+    } else {
+      if (track.source === 'local') {
+          playAudio(track.url).then(() => setIsPlaying(true));
       }
-    }, 80);
+      else if (track.source === 'spotify') {
+          playSpotify(track.id).then(() => setIsPlaying(true));
+      }
+    }
   };
 
-  const toggleTheme = () => setTheme((prev) => (prev === 'pink' ? 'blue' : 'pink'));
+  // Handle Next Track
+  const nextTrack = () => {
+    if (playlist.length === 0) return;
+    const nextIndex = (currentTrackIndex + 1) % playlist.length;
+    setCurrentTrackIndex(nextIndex);
+    // You'd want to auto-play the next track here depending on your logic
+    setIsPlaying(false); // Reset state temporarily
+  };
+
+  // Handle Previous Track
+  const prevTrack = () => {
+    if (playlist.length === 0) return;
+    const prevIndex = currentTrackIndex === 0 ? playlist.length - 1 : currentTrackIndex - 1;
+    setCurrentTrackIndex(prevIndex);
+     // You'd want to auto-play the prev track here depending on your logic
+    setIsPlaying(false);
+  };
+
+  // Volume Control
+  const handleVolumeChange = (e) => {
+    const newVol = parseFloat(e.target.value);
+    setVolume(newVol);
+    setAudioVolume(newVol);
+    setSpotifyVolume(newVol);
+    if (newVol > 0 && isMuted) setIsMuted(false);
+  };
+
+  const toggleMute = () => {
+    if (isMuted) {
+      setIsMuted(false);
+      setAudioVolume(volume);
+      setSpotifyVolume(volume);
+    } else {
+      setIsMuted(true);
+      setAudioVolume(0);
+      setSpotifyVolume(0);
+    }
+  };
+
+  // Render UI
+  if (dataLoading) {
+    return <div className="loading-screen">Loading SchaleDB Assets...</div>;
+  }
+
+  if (dataError) {
+    return <div className="error-screen">Error: {dataError}</div>;
+  }
+
+  const currentTrack = playlist[currentTrackIndex] || { title: "No Track Selected", artist: "" };
 
   return (
-    <div className={`app-container ${theme}-theme`}>
-      <div className="window-header drag-region">
-        <span className="app-title">art randomizer</span>
-        <div className="header-controls no-drag">
-          <button className="icon-btn btn-settings" onClick={toggleTheme} title="Change Theme" />
-          <button className="icon-btn btn-minimize" onClick={() => window.cupid?.minimize()} />
-          <button className="icon-btn btn-exit" onClick={() => window.cupid?.close()} />
-        </div>
-      </div>
-
-      <div className="app-content">
-        <div className="display-card">
-          {rolledCharacter ? (
-            <div className={`result-layout ${isRolling ? 'rolling' : ''}`}>
-              <div className="char-info">
-                {rolledCharacter.imageUrl && (
-                  <img 
-                    src={rolledCharacter.imageUrl} 
-                    alt={rolledCharacter.name} 
-                    style={{ 
-                      width: '140px', height: '140px', objectFit: 'contain', 
-                      marginBottom: '15px', borderRadius: '12px',
-                      backgroundColor: 'rgba(0,0,0,0.05)'
-                    }} 
-                  />
-                )}
-                <h2 className="character-name">{rolledCharacter.name}</h2>
-                <span className="game-tag">{rolledCharacter.game}</span>
-              </div>
-
-              {rolledModifier && (
-                <div className="modifier-box">
-                  <div className="modifier-label">{rolledModifier.type}</div>
-                  <p className="modifier-text">"{rolledModifier.text}"</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="empty-prompt">
-              <p>Ready to sketch?</p>
-              <span>Hit roll to pull a student!</span>
-            </div>
-          )}
-        </div>
-
-        <div className="action-footer">
+    <div className={`app-container theme-${theme}`}>
+      <div className="player-card">
+        
+        {/* Header / Theme Toggle */}
+        <div className="header">
           <button 
-            className={`roll-button ${isRolling || !pool ? 'disabled' : ''}`}
-            onClick={handleRoll}
-            disabled={isRolling || !pool}
+            className="theme-toggle"
+            onClick={() => setTheme(theme === 'blue' ? 'pink' : 'blue')}
           >
-            {!pool ? 'CONNECTING TO SCHALE...' : isRolling ? 'ROLLING...' : 'PULL CHARACTER'}
+            Toggle Theme
           </button>
         </div>
+
+        {/* Album Art Area */}
+        <div className="album-art-container">
+           {/* Replace with actual album art logic based on track or student */}
+          <div className="placeholder-art">
+             {Object.keys(students).length > 0 ? "Students Loaded!" : "No Art"}
+          </div>
+        </div>
+
+        {/* Track Info */}
+        <div className="track-info">
+          <h2>{currentTrack.title}</h2>
+          <p>{currentTrack.artist}</p>
+        </div>
+
+        {/* Progress Bar (Placeholder) */}
+        <div className="progress-container">
+            <input 
+              type="range" 
+              min="0" 
+              max="100" 
+              value={progress} 
+              onChange={() => {}} 
+              className="progress-bar"
+            />
+        </div>
+
+        {/* Controls */}
+        <div className="controls">
+          <button className="control-btn" onClick={prevTrack}>Prev</button>
+          <button className="control-btn play-btn" onClick={togglePlay}>
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <button className="control-btn" onClick={nextTrack}>Next</button>
+        </div>
+
+        {/* Volume */}
+        <div className="volume-control">
+          <button onClick={toggleMute}>{isMuted ? 'Muted' : 'Vol'}</button>
+          <input 
+            type="range" 
+            min="0" 
+            max="1" 
+            step="0.01" 
+            value={isMuted ? 0 : volume} 
+            onChange={handleVolumeChange} 
+          />
+        </div>
+
       </div>
     </div>
   );
 }
+
+export default App;

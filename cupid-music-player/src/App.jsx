@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// You can now edit your drawing prompts directly here, no Gists needed!
 const defaultModifiers = {
   "Anatomy Focus": ["Practicing hand anatomy", "Focusing on dynamic hair flow", "Full body proportions", "Facial expressions"],
   "Pose": ["Standing confidently", "Sitting", "Action pose / Jumping", "Looking over shoulder", "Adjusting glasses"],
@@ -15,24 +14,21 @@ export default function App() {
   const [rolledCharacter, setRolledCharacter] = useState(null);
   const [rolledModifier, setRolledModifier] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
-  const [fetchError, setFetchError] = useState(false); // NEW: Tracks if the connection fails
+  const [fetchError, setFetchError] = useState(false);
 
-  // CLOUD FETCHING + SMART CACHING
   useEffect(() => {
     async function loadData() {
       try {
-        // 1. Load the built-in modifiers
         const onlineModifiers = defaultModifiers; 
 
-        // 2. Load Blue Archive Characters from SchaleDB
-        const cachedSchale = localStorage.getItem('schaledb_characters');
+        // FIX 1: Bumped the cache key to '_v2'. This forces the app to ignore 
+        // the broken URLs you currently have saved in memory and fetch fresh data.
+        const cachedSchale = localStorage.getItem('schaledb_characters_v2');
         let characters = [];
 
         if (cachedSchale) {
-          // Load instantly from memory
           characters = JSON.parse(cachedSchale);
         } else {
-          // FIXED: Fetch the minified file from the raw GitHub endpoint
           const schaleResponse = await fetch('https://raw.githubusercontent.com/lonqie/SchaleDB/main/data/en/students.min.json');
           
           if (!schaleResponse.ok) {
@@ -40,27 +36,23 @@ export default function App() {
           }
           
           const schaleData = await schaleResponse.json();
-          
-          // FIXED: SchaleDB data is usually an object. We need to convert it to an array safely.
           const studentArray = Array.isArray(schaleData) ? schaleData : Object.values(schaleData);
           
           characters = studentArray.map(student => ({
             name: student.Name,
             game: "Blue Archive",
-            // FIXED: Fetch images directly from the actual schale.gg site, not schaledb.com
-            imageUrl: `https://schale.gg/images/student/collection/${student.Id}.webp`
+            // FIX 2: Switched to GitHub's raw CDN for the images. 
+            imageUrl: `https://raw.githubusercontent.com/lonqie/SchaleDB/main/images/student/collection/${student.Id}.webp`
           }));
           
-          // Save the fixed list to local storage
-          localStorage.setItem('schaledb_characters', JSON.stringify(characters));
+          localStorage.setItem('schaledb_characters_v2', JSON.stringify(characters));
         }
 
-        // 3. Combine both data sources and start the app
         setPool({ characters, modifiers: onlineModifiers });
 
       } catch (error) {
         console.error("Error loading data:", error);
-        setFetchError(true); // Tell the UI that it failed so it doesn't spin forever
+        setFetchError(true);
       }
     }
 
@@ -73,11 +65,9 @@ export default function App() {
     
     let cycles = 0;
     const interval = setInterval(() => {
-      // Pick random character
       const tempChar = pool.characters[Math.floor(Math.random() * pool.characters.length)];
       setRolledCharacter(tempChar);
       
-      // Pick random modifier
       if (pool.modifiers && Object.keys(pool.modifiers).length > 0) {
         const modTypes = Object.keys(pool.modifiers);
         const randomType = modTypes[Math.floor(Math.random() * modTypes.length)];
@@ -118,19 +108,27 @@ export default function App() {
           {rolledCharacter ? (
             <div className={`result-layout ${isRolling ? 'rolling' : ''}`}>
               <div className="char-info">
-                {rolledCharacter.imageUrl && (
-                  <img 
-                    src={rolledCharacter.imageUrl} 
-                    alt={rolledCharacter.name} 
-                    style={{ 
-                      width: '140px', height: '140px', objectFit: 'contain', 
-                      marginBottom: '15px', borderRadius: '12px',
-                      backgroundColor: 'rgba(0,0,0,0.05)'
-                    }} 
-                    // FIXED: If an image fails to load, hide it instead of showing a broken link icon
-                    onError={(e) => { e.target.style.display = 'none'; }}
-                  />
-                )}
+                
+                {/* FIX 3: Added a wrapper with a fixed height so the layout doesn't collapse while rolling */}
+                <div style={{ minHeight: '155px', display: 'flex', justifyContent: 'center' }}>
+                  
+                  {/* FIX 4: `!isRolling` prevents network spam. `key` forces React to reset the display state. */}
+                  {!isRolling && rolledCharacter.imageUrl && (
+                    <img 
+                      key={rolledCharacter.name}
+                      src={rolledCharacter.imageUrl} 
+                      alt={rolledCharacter.name} 
+                      style={{ 
+                        width: '140px', height: '140px', objectFit: 'contain', 
+                        marginBottom: '15px', borderRadius: '12px',
+                        backgroundColor: 'rgba(0,0,0,0.05)',
+                        display: 'block'
+                      }} 
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  )}
+                </div>
+
                 <h2 className="character-name">{rolledCharacter.name}</h2>
                 <span className="game-tag">{rolledCharacter.game}</span>
               </div>
@@ -156,7 +154,6 @@ export default function App() {
             onClick={handleRoll}
             disabled={isRolling || !pool || fetchError}
           >
-            {/* Dynamic button text so you actually know what's happening */}
             {fetchError ? 'CONNECTION FAILED' : 
              !pool ? 'CONNECTING TO SCHALEDB...' : 
              isRolling ? 'ROLLING...' : 

@@ -16,20 +16,27 @@ export default function App() {
   const [isRolling, setIsRolling] = useState(false);
   const [fetchError, setFetchError] = useState(false);
 
+// CLOUD FETCHING + SMART CACHING
   useEffect(() => {
     async function loadData() {
       try {
         const onlineModifiers = defaultModifiers; 
 
-        // FIX 1: Bumped the cache key to '_v2'. This forces the app to ignore 
-        // the broken URLs you currently have saved in memory and fetch fresh data.
-        const cachedSchale = localStorage.getItem('schaledb_characters_v2');
+        const cacheKey = 'schaledb_data';
+        const cacheTimeKey = 'schaledb_time';
+        const now = new Date().getTime();
+        
+        const cachedSchale = localStorage.getItem(cacheKey);
+        const cachedTime = localStorage.getItem(cacheTimeKey);
+        
         let characters = [];
 
-        if (cachedSchale) {
+        // Check if we have data AND if it's less than 24 hours old (86,400,000 milliseconds)
+        if (cachedSchale && cachedTime && (now - parseInt(cachedTime)) < 86400000) {
           characters = JSON.parse(cachedSchale);
         } else {
-          const schaleResponse = await fetch('https://raw.githubusercontent.com/lonqie/SchaleDB/main/data/en/students.min.json');
+          // Data is old or missing. Fetch fresh data from GitHub!
+          const schaleResponse = await fetch('https://raw.githubusercontent.com/lonqie/SchaleDB/main/data/jp/students.min.json');
           
           if (!schaleResponse.ok) {
             throw new Error("Network response was not ok");
@@ -41,18 +48,19 @@ export default function App() {
           characters = studentArray.map(student => ({
             name: student.Name,
             game: "Blue Archive",
-            // FIX 2: Switched to GitHub's raw CDN for the images. 
             imageUrl: `https://raw.githubusercontent.com/lonqie/SchaleDB/main/images/student/collection/${student.Id}.webp`
           }));
           
-          localStorage.setItem('schaledb_characters_v2', JSON.stringify(characters));
+          // Save the fresh data AND the exact time we fetched it
+          localStorage.setItem(cacheKey, JSON.stringify(characters));
+          localStorage.setItem(cacheTimeKey, now.toString());
         }
 
         setPool({ characters, modifiers: onlineModifiers });
 
       } catch (error) {
         console.error("Error loading data:", error);
-        setFetchError(true);
+        setFetchError(true); 
       }
     }
 

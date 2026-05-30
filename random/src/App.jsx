@@ -229,6 +229,14 @@ export default function App() {
     // Reset pity for the winner so they go back to standard odds
     characterPity.current[winningChar.name] = 1;
 
+    // ---> ADD THIS DEBUG BLOCK <---
+    const topPity = Object.entries(characterPity.current)
+      .sort((a, b) => b[1] - a[1]) // Sort from highest pity to lowest
+      .slice(0, 5); // Grab the top 5
+    
+    console.log(`🎉 Winner: ${winningChar.name}`);
+    console.log("📈 Top 5 characters closest to pity:", topPity);
+    // --
 
     // ---> EXISTING ANIMATION LOGIC <---
     let cycles = 0;

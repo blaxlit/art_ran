@@ -1,8 +1,8 @@
 {
-  "name": "cupid-player",
-  "version": "0.0.0",
+  "name": "art-randomizer", 
+  "version": "1.0.0",
   "private": true,
-  "description": "A desktop media player",
+  "description": "An art prompt and character randomizer", 
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -29,14 +29,13 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.codedbycupidity.cupid-player",
-    "productName": "Cupid Player",
+    "appId": "com.codedbycupidity.art-randomizer", 
+    "productName": "Art Randomizer", 
     "files": [
       "dist/**/*",
       "electron/**/*",
       "assets/**/*"
     ],
-    
     "directories": {
       "output": "out"
     },

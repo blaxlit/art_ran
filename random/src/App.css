@@ -215,3 +215,24 @@ body {
   from { transform: scale(1); }
   to { transform: scale(0.98); }
 }
+
+/* Add this anywhere in your App.css */
+.gold-warp-glow {
+  animation: rare-pull-flash 1.5s ease-out;
+  border-radius: 12px;
+}
+
+@keyframes rare-pull-flash {
+  0% {
+    box-shadow: 0 0 0px rgba(255, 215, 0, 0);
+    background-color: transparent;
+  }
+  20% {
+    box-shadow: 0 0 40px rgba(255, 215, 0, 1), inset 0 0 20px rgba(255, 215, 0, 0.5);
+    background-color: rgba(255, 215, 0, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(255, 215, 0, 0);
+    background-color: transparent;
+  }
+}

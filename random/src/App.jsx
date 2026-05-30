@@ -144,15 +144,16 @@ export default function App() {
   const [isRolling, setIsRolling] = useState(false);
   const [fetchError, setFetchError] = useState(false);
 
-  // ---> NEW: The Pity Tracker for Characters <---
+  // ---> THE PITY STATES <---
   const characterPity = useRef({});
+  const [rollCount, setRollCount] = useState(0); // Tracks progress to 10
+  const [isHardPityAnim, setIsHardPityAnim] = useState(false); // Triggers the visual glow
 
-// CLOUD FETCHING + SMART CACHING
+  // CLOUD FETCHING + SMART CACHING
   useEffect(() => {
     async function loadData() {
       try {
         const onlineModifiers = defaultModifiers; 
-
         const cacheKey = 'schaledb_data';
         const cacheTimeKey = 'schaledb_time';
         const now = new Date().getTime();
@@ -162,15 +163,12 @@ export default function App() {
         
         let characters = [];
 
-        // Check if we have data AND if it's less than 24 hours old (86,400,000 milliseconds)
+        // Check if we have data AND if it's less than 24 hours old
         if (cachedSchale && cachedTime && (now - parseInt(cachedTime)) < 86400000) {
           characters = JSON.parse(cachedSchale);
         } else {
-          // Data is old or missing. Fetch fresh data from GitHub!
           const schaleResponse = await fetch('https://schaledb.com/data/jp/students.min.json');
-          if (!schaleResponse.ok) {
-            throw new Error("Network response was not ok");
-          }
+          if (!schaleResponse.ok) throw new Error("Network response was not ok");
           
           const schaleData = await schaleResponse.json();
           const studentArray = Array.isArray(schaleData) ? schaleData : Object.values(schaleData);
@@ -181,7 +179,6 @@ export default function App() {
             imageUrl: `https://schaledb.com/images/student/collection/${student.Id}.webp`
           }));
           
-          // Save the fresh data AND the exact time we fetched it
           localStorage.setItem(cacheKey, JSON.stringify(characters));
           localStorage.setItem(cacheTimeKey, now.toString());
         }
@@ -201,7 +198,11 @@ export default function App() {
     if (!pool || pool.characters.length === 0) return;
     setIsRolling(true);
     
-    // ---> NEW: PRE-CALCULATE THE WINNER USING PITY BEFORE ANIMATING <---
+    // Check if this is the guaranteed 10th pull
+    const isHardPity = rollCount === 9;
+    setIsHardPityAnim(isHardPity); // Tell the UI to glow if true
+
+    // Initialize anyone missing from the pity tracker
     pool.characters.forEach(char => {
       if (characterPity.current[char.name] === undefined) {
         characterPity.current[char.name] = 1;
@@ -210,51 +211,67 @@ export default function App() {
       }
     });
 
-    let totalWeight = 0;
-    pool.characters.forEach(char => {
-      totalWeight += characterPity.current[char.name];
-    });
-
-    let roll = Math.random() * totalWeight;
     let winningChar = pool.characters[0];
 
-    for (let char of pool.characters) {
-      roll -= characterPity.current[char.name];
-      if (roll <= 0) {
-        winningChar = char;
-        break;
+    if (isHardPity) {
+      // ---> HARD PITY LOGIC <---
+      let maxPity = 0;
+      let mostDeserving = [];
+      
+      // Find the absolute highest pity numbers
+      for (const [name, pityCount] of Object.entries(characterPity.current)) {
+        if (pityCount > maxPity) {
+          maxPity = pityCount;
+          mostDeserving = [name];
+        } else if (pityCount === maxPity) {
+          mostDeserving.push(name);
+        }
       }
+      
+      // Pick a random winner from the characters who have waited the longest
+      const winnerName = mostDeserving[Math.floor(Math.random() * mostDeserving.length)];
+      winningChar = pool.characters.find(c => c.name === winnerName);
+      
+      setRollCount(0); // Reset tracker after hard pity
+      console.log(`🌟 GUARANTEED PULL: ${winningChar.name} 🌟`);
+
+    } else {
+      // ---> STANDARD SOFT PITY LOGIC <---
+      let totalWeight = 0;
+      pool.characters.forEach(char => {
+        totalWeight += characterPity.current[char.name];
+      });
+
+      let roll = Math.random() * totalWeight;
+
+      for (let char of pool.characters) {
+        roll -= characterPity.current[char.name];
+        if (roll <= 0) {
+          winningChar = char;
+          break;
+        }
+      }
+      
+      setRollCount(prev => prev + 1); // Progress the tracker
     }
 
     // Reset pity for the winner so they go back to standard odds
     characterPity.current[winningChar.name] = 1;
 
-    // ---> ADD THIS DEBUG BLOCK <---
-    const topPity = Object.entries(characterPity.current)
-      .sort((a, b) => b[1] - a[1]) // Sort from highest pity to lowest
-      .slice(0, 5); // Grab the top 5
-    
-    console.log(`🎉 Winner: ${winningChar.name}`);
-    console.log("📈 Top 5 characters closest to pity:", topPity);
-    // --
-
-    // ---> EXISTING ANIMATION LOGIC <---
+    // ANIMATION LOGIC
     let cycles = 0;
     const interval = setInterval(() => {
       cycles++;
       
       if (cycles > 8) {
-        // Stop animation and lock in our predetermined winner
         setRolledCharacter(winningChar);
         clearInterval(interval);
         setIsRolling(false);
       } else {
-        // While rolling, flash random characters rapidly for the visual effect
         const tempChar = pool.characters[Math.floor(Math.random() * pool.characters.length)];
         setRolledCharacter(tempChar);
       }
       
-      // Roll a random modifier every tick (keeping this true random)
       if (pool.modifiers && Object.keys(pool.modifiers).length > 0) {
         const modTypes = Object.keys(pool.modifiers);
         const randomType = modTypes[Math.floor(Math.random() * modTypes.length)];
@@ -290,10 +307,11 @@ export default function App() {
             <div className={`result-layout ${isRolling ? 'rolling' : ''}`}>
               <div className="char-info">
                 
-                {/* FIX 3: Added a wrapper with a fixed height so the layout doesn't collapse while rolling */}
-                <div style={{ minHeight: '155px', display: 'flex', justifyContent: 'center' }}>
-                  
-                  {/* FIX 4: `!isRolling` prevents network spam. `key` forces React to reset the display state. */}
+                {/* DYNAMIC CLASS FOR GOLD GLOW */}
+                <div 
+                  className={isHardPityAnim ? 'gold-warp-glow' : ''} 
+                  style={{ minHeight: '155px', display: 'flex', justifyContent: 'center' }}
+                >
                   {!isRolling && rolledCharacter.imageUrl && (
                     <img 
                       key={rolledCharacter.name}
@@ -330,6 +348,11 @@ export default function App() {
         </div>
 
         <div className="action-footer">
+          {/* THE PROGRESS BAR UI */}
+          <div className="pity-tracker" style={{ fontSize: '14px', marginBottom: '8px', color: '#666', fontWeight: 'bold' }}>
+            <span>[ { '⭐'.repeat(rollCount) }{ '-'.repeat(10 - rollCount) } ] {rollCount} / 10 Rolls</span>
+          </div>
+
           <button 
             className={`roll-button ${isRolling || !pool || fetchError ? 'disabled' : ''}`}
             onClick={handleRoll}

@@ -175,7 +175,7 @@ export default function App() {
           characters = studentArray.map(student => ({
             name: student.Name,
             game: "Blue Archive",
-            imageUrl: `https://raw.githubusercontent.com/lonqie/SchaleDB/main/images/student/collection/${student.Id}.webp`
+            imageUrl: `https://schaledb.com/images/student/collection/${student.Id}.webp`
           }));
           
           // Save the fresh data AND the exact time we fetched it

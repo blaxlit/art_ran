@@ -1,0 +1,217 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+
+:root {
+  --bg-color: #121212;
+  --card-bg: #1e1e1e;
+  --text-main: #ffffff;
+  --text-sub: #a0a0a0;
+  --accent: #6C5CE7;
+  --accent-hover: #5b4bc4;
+}
+
+/* Bright Theme */
+.pink-theme {
+  --bg-color: #fff0f3;
+  --card-bg: #ffffff;
+  --text-main: #2d3436;
+  --text-sub: #636e72;
+  --accent: #ff7675;
+  --accent-hover: #d63031;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Nunito', sans-serif;
+}
+
+body {
+  /* Critical: Keeps the Electron window transparent around the edges */
+  background-color: transparent; 
+  overflow: hidden;
+}
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 2px solid var(--accent);
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* This allows you to drag the borderless window around your screen */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+/* This stops the buttons from dragging the window so you can click them */
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: rgba(0,0,0,0.1);
+  border-bottom: 1px solid rgba(128,128,128,0.1);
+}
+
+.app-title {
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.header-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.icon-btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.icon-btn:hover {
+  transform: scale(1.2);
+}
+.btn-settings { background-color: #ffeaa7; }
+.btn-minimize { background-color: #00cec9; }
+.btn-exit { background-color: #ff7675; }
+
+.app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  justify-content: space-between;
+}
+
+.display-card {
+  background-color: var(--card-bg);
+  flex: 1;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  box-shadow: inset 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.empty-prompt p {
+  font-size: 24px;
+  font-weight: 900;
+}
+.empty-prompt span {
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.char-info {
+  margin-bottom: 25px;
+}
+
+.character-name {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--accent);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.game-tag {
+  font-size: 12px;
+  background-color: var(--accent);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.modifier-box {
+  background-color: rgba(128,128,128,0.1);
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px dashed var(--text-sub);
+}
+
+.modifier-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: var(--text-sub);
+  letter-spacing: 1.5px;
+  margin-bottom: 5px;
+}
+
+.modifier-text {
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 700;
+}
+
+.action-footer {
+  margin-top: 20px;
+}
+
+.roll-button {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: 12px;
+  background-color: var(--accent);
+  color: white;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+  /* Ensures the button is clickable and doesn't drag the window */
+  -webkit-app-region: no-drag; 
+}
+
+.roll-button:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-2px);
+}
+
+.roll-button:active {
+  transform: translateY(2px);
+}
+
+.roll-button.disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  animation: pulse 0.4s infinite alternate;
+}
+
+.result-layout {
+  transition: all 0.1s ease-in-out;
+}
+
+.result-layout.rolling {
+  opacity: 0.3;
+  filter: blur(3px) scale(0.95);
+}
+
+@keyframes pulse {
+  from { transform: scale(1); }
+  to { transform: scale(0.98); }
+}

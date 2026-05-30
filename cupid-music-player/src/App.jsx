@@ -36,8 +36,7 @@ export default function App() {
           characters = JSON.parse(cachedSchale);
         } else {
           // Data is old or missing. Fetch fresh data from GitHub!
-          const schaleResponse = await fetch('https://raw.githubusercontent.com/SchaleDB/SchaleDB/main/data/jp/students.min.json');
-          
+          const schaleResponse = await fetch('https://schaledb.com/data/jp/students.min.json');
           if (!schaleResponse.ok) {
             throw new Error("Network response was not ok");
           }

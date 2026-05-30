@@ -164,10 +164,10 @@ export default function App() {
         let characters = [];
 
         // Check if we have data AND if it's less than 24 hours old
-        if (cachedSchale && cachedTime && (now - parseInt(cachedTime)) < 86400000) {
-          characters = JSON.parse(cachedSchale);
-        } else {
-          const schaleResponse = await fetch('https://schaledb.com/data/jp/students.min.json');
+        if (false) { 
+  characters = JSON.parse(cachedSchale);
+} else {
+  const schaleResponse = await fetch('https://schaledb.com/data/jp/students.min.json');
           if (!schaleResponse.ok) throw new Error("Network response was not ok");
           
           const schaleData = await schaleResponse.json();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const defaultModifiers = {
@@ -144,6 +144,9 @@ export default function App() {
   const [isRolling, setIsRolling] = useState(false);
   const [fetchError, setFetchError] = useState(false);
 
+  // ---> NEW: The Pity Tracker for Characters <---
+  const characterPity = useRef({});
+
 // CLOUD FETCHING + SMART CACHING
   useEffect(() => {
     async function loadData() {
@@ -198,11 +201,52 @@ export default function App() {
     if (!pool || pool.characters.length === 0) return;
     setIsRolling(true);
     
+    // ---> NEW: PRE-CALCULATE THE WINNER USING PITY BEFORE ANIMATING <---
+    pool.characters.forEach(char => {
+      if (characterPity.current[char.name] === undefined) {
+        characterPity.current[char.name] = 1;
+      } else {
+        characterPity.current[char.name] += 1;
+      }
+    });
+
+    let totalWeight = 0;
+    pool.characters.forEach(char => {
+      totalWeight += characterPity.current[char.name];
+    });
+
+    let roll = Math.random() * totalWeight;
+    let winningChar = pool.characters[0];
+
+    for (let char of pool.characters) {
+      roll -= characterPity.current[char.name];
+      if (roll <= 0) {
+        winningChar = char;
+        break;
+      }
+    }
+
+    // Reset pity for the winner so they go back to standard odds
+    characterPity.current[winningChar.name] = 1;
+
+
+    // ---> EXISTING ANIMATION LOGIC <---
     let cycles = 0;
     const interval = setInterval(() => {
-      const tempChar = pool.characters[Math.floor(Math.random() * pool.characters.length)];
-      setRolledCharacter(tempChar);
+      cycles++;
       
+      if (cycles > 8) {
+        // Stop animation and lock in our predetermined winner
+        setRolledCharacter(winningChar);
+        clearInterval(interval);
+        setIsRolling(false);
+      } else {
+        // While rolling, flash random characters rapidly for the visual effect
+        const tempChar = pool.characters[Math.floor(Math.random() * pool.characters.length)];
+        setRolledCharacter(tempChar);
+      }
+      
+      // Roll a random modifier every tick (keeping this true random)
       if (pool.modifiers && Object.keys(pool.modifiers).length > 0) {
         const modTypes = Object.keys(pool.modifiers);
         const randomType = modTypes[Math.floor(Math.random() * modTypes.length)];
@@ -215,12 +259,6 @@ export default function App() {
             text: tempMod
           });
         }
-      }
-
-      cycles++;
-      if (cycles > 8) {
-        clearInterval(interval);
-        setIsRolling(false);
       }
     }, 80);
   };

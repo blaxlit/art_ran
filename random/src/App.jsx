@@ -144,6 +144,10 @@ export default function App() {
   const [isRolling, setIsRolling] = useState(false);
   const [fetchError, setFetchError] = useState(false);
 
+  // ---> NEW: Search States <---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+
   // ---> THE PITY STATES <---
   const characterPity = useRef({});
   const [rollCount, setRollCount] = useState(0); // Tracks progress to 10
@@ -290,11 +294,26 @@ export default function App() {
 
   const toggleTheme = () => setTheme((prev) => (prev === 'pink' ? 'blue' : 'pink'));
 
+  // ---> NEW: Filter characters based on search query <---
+  const searchResults = (pool && searchQuery.trim() !== '')
+    ? pool.characters
+        .filter(char => char.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .slice(0, 5) // Limit to 5 results to keep the UI clean
+    : [];
+
   return (
     <div className={`app-container ${theme}-theme`}>
       <div className="window-header drag-region">
         <span className="app-title">art randomizer</span>
         <div className="header-controls no-drag">
+          {/* ---> NEW: Search Toggle Button <--- */}
+          <button 
+            className="icon-btn btn-search" 
+            onClick={() => setShowSearch(!showSearch)} 
+            title="Search Database"
+          >
+            🔍
+          </button>
           <button className="icon-btn btn-settings" onClick={toggleTheme} title="Change Theme" />
           <button className="icon-btn btn-minimize" onClick={() => window.cupid?.minimize()} />
           <button className="icon-btn btn-exit" onClick={() => window.cupid?.close()} />
@@ -346,6 +365,36 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* ---> NEW: Search UI <--- */}
+        {showSearch && (
+          <div className="search-section" style={{ padding: '10px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '10px' }}>
+            <input 
+              type="text" 
+              placeholder="Check if character is in DB..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', marginBottom: '8px' }}
+            />
+            
+            {searchQuery && (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '14px', maxHeight: '100px', overflowY: 'auto' }}>
+                {searchResults.length > 0 ? (
+                  searchResults.map((char, index) => (
+                    <li key={index} style={{ padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+                      ✅ {char.name}
+                    </li>
+                  ))
+                ) : (
+                  <li style={{ color: '#888', fontStyle: 'italic' }}>❌ Character not found...</li>
+                )}
+              </ul>
+            )}
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px', textAlign: 'right' }}>
+              Total DB Size: {pool ? pool.characters.length : 0} characters
+            </div>
+          </div>
+        )}
 
         <div className="action-footer">
           {/* THE PROGRESS BAR UI */}

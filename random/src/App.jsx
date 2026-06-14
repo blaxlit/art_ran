@@ -167,18 +167,35 @@ export default function App() {
         
         let characters = [];
 
-        // Check if we have data AND if it's less than 24 hours old
+        // Note: Change false to true if you want to re-enable 24hr caching
         if (false) { 
-  characters = JSON.parse(cachedSchale);
-} else {
-  const schaleResponse = await fetch('https://schaledb.com/data/jp/students.min.json');
-          if (!schaleResponse.ok) throw new Error("Network response was not ok");
+          characters = JSON.parse(cachedSchale);
+        } else {
+          // Fetch BOTH Japanese and English databases concurrently
+          const [jpResponse, enResponse] = await Promise.all([
+            fetch('https://schaledb.com/data/jp/students.min.json'),
+            fetch('https://schaledb.com/data/en/students.min.json')
+          ]);
+
+          if (!jpResponse.ok || !enResponse.ok) throw new Error("Network response was not ok");
           
-          const schaleData = await schaleResponse.json();
-          const studentArray = Array.isArray(schaleData) ? schaleData : Object.values(schaleData);
+          const jpData = await jpResponse.json();
+          const enData = await enResponse.json();
           
-          characters = studentArray.map(student => ({
-            name: student.Name,
+          const jpArray = Array.isArray(jpData) ? jpData : Object.values(jpData);
+          const enArray = Array.isArray(enData) ? enData : Object.values(enData);
+
+          // Create a lookup dictionary for English names using the character's ID
+          const enNameLookup = {};
+          enArray.forEach(student => {
+            enNameLookup[student.Id] = student.Name;
+          });
+          
+          // Map through the JP array to keep the latest characters, but attach the EN name
+          characters = jpArray.map(student => ({
+            id: student.Id,
+            name: student.Name, // Original JP DB name
+            enName: enNameLookup[student.Id] || student.Name, // Fallback to JP name if no EN name exists yet
             game: "Blue Archive",
             imageUrl: `https://schaledb.com/images/student/collection/${student.Id}.webp`
           }));
@@ -294,10 +311,13 @@ export default function App() {
 
   const toggleTheme = () => setTheme((prev) => (prev === 'pink' ? 'blue' : 'pink'));
 
-  // ---> NEW: Filter characters based on search query <---
+  // ---> Filter characters based on search query (Checks EN and JP names) <---
   const searchResults = (pool && searchQuery.trim() !== '')
     ? pool.characters
-        .filter(char => char.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .filter(char => 
+          char.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          char.enName.toLowerCase().includes(searchQuery.toLowerCase())
+        )
         .slice(0, 5) // Limit to 5 results to keep the UI clean
     : [];
 
@@ -347,7 +367,12 @@ export default function App() {
                   )}
                 </div>
 
-                <h2 className="character-name">{rolledCharacter.name}</h2>
+                <h2 className="character-name">{rolledCharacter.enName}</h2>
+                {rolledCharacter.name !== rolledCharacter.enName && (
+                  <span style={{ display: 'block', fontSize: '15px', color: '#444343', marginTop: '-5px', marginBottom: '8px' }}>
+                    ({rolledCharacter.name})
+                  </span>
+                )}
                 <span className="game-tag">{rolledCharacter.game}</span>
               </div>
 
@@ -382,7 +407,7 @@ export default function App() {
                 {searchResults.length > 0 ? (
                   searchResults.map((char, index) => (
                     <li key={index} style={{ padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                      ✅ {char.name}
+                      ✅ {char.enName} {char.name !== char.enName ? `(${char.name})` : ''}
                     </li>
                   ))
                 ) : (
